@@ -7,9 +7,9 @@ import java.util.Set;
 import android.annotation.TargetApi;
 import android.app.Activity;
 import android.support.annotation.NonNull;
-import android.support.v4.app.Fragment;
-import android.support.v4.app.FragmentManager;
-import android.support.v4.app.FragmentTransaction;
+//import android.support.v4.app.Fragment;
+//import android.support.v4.app.FragmentManager;
+//import android.support.v4.app.FragmentTransaction;
 import android.support.v7.widget.RecyclerView;
 import android.util.Log;
 import android.util.SparseArray;
@@ -40,10 +40,11 @@ import android.view.ViewGroup;
  * </p>
  */
 @TargetApi(12)
-public abstract class FragmentStatePagerAdapter extends RecyclerView.Adapter<FragmentStatePagerAdapter.FragmentViewHolder> {
+//public abstract class FragmentStatePagerAdapter extends RecyclerView.Adapter<FragmentStatePagerAdapter.FragmentViewHolder> {
+public abstract class FragmentStatePagerAdapter{
     private static final String TAG = "FragmentStatePagerAdapter";
     private static final boolean DEBUG = false;
-
+/*
     private final FragmentManager mFragmentManager;
     private FragmentTransaction mCurTransaction = null;
     private SparseArray<Fragment.SavedState> mStates = new SparseArray<>();
@@ -64,6 +65,7 @@ public abstract class FragmentStatePagerAdapter extends RecyclerView.Adapter<Fra
     /**
      * set custom idGenerator
      */
+/*
     public void setContainerIdGenerator(@NonNull IContainerIdGenerator idGenerator) {
         mContainerIdGenerator = idGenerator;
     }
@@ -122,6 +124,7 @@ public abstract class FragmentStatePagerAdapter extends RecyclerView.Adapter<Fra
     /**
      * Return the Fragment associated with a specified position.
      */
+/*
     public abstract Fragment getItem(int position, Fragment.SavedState savedState);
 
     public abstract void onDestroyItem(int position, Fragment fragment);
@@ -171,4 +174,5 @@ public abstract class FragmentStatePagerAdapter extends RecyclerView.Adapter<Fra
     public interface IContainerIdGenerator {
         int genId(Set<Integer> idContainer);
     }
+    */
 }
