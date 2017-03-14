@@ -2,24 +2,18 @@ package com.lsjwzh.widget.recyclerviewpager;
 
 import android.content.Context;
 import android.content.res.TypedArray;
-import android.graphics.PointF;
-import android.os.Build;
 import android.os.Parcelable;
 import android.support.annotation.NonNull;
 import android.support.annotation.Nullable;
 import android.support.v7.widget.LinearLayoutManager;
-import android.support.v7.widget.LinearSmoothScroller;
 import android.support.v7.widget.LinearSnapHelper;
 import android.support.v7.widget.OrientationHelper;
 import android.support.v7.widget.RecyclerView;
 import android.support.v7.widget.SnapHelper;
 import android.util.AttributeSet;
-import android.util.DisplayMetrics;
 import android.util.Log;
-import android.view.MotionEvent;
 import android.view.View;
 import android.view.ViewConfiguration;
-import android.view.ViewTreeObserver;
 
 import java.lang.reflect.Field;
 import java.util.ArrayList;
@@ -45,22 +39,8 @@ public class RecyclerViewPager extends RecyclerView {
     private boolean mSinglePageFling;
     boolean isInertia; // inertia slide state
     float minSlideDistance;
-    PointF touchStartPoint;
 
-    boolean mNeedAdjust;
-    int mFisrtLeftWhenDragging;
-    int mFirstTopWhenDragging;
-    View mCurView;
-    int mMaxLeftWhenDragging = Integer.MIN_VALUE;
-    int mMinLeftWhenDragging = Integer.MAX_VALUE;
-    int mMaxTopWhenDragging = Integer.MIN_VALUE;
-    int mMinTopWhenDragging = Integer.MAX_VALUE;
-    private int mPositionOnTouchDown = -1;
-    private boolean mHasCalledOnPageChanged = true;
-    private boolean reverseLayout = false;
-    private float mLastY;
-
-    private int mChildWidth = 1050;
+    private int mPageSize = 1000;   //hardcode default and adjust in MyCollagesPreviewActivity.
 
     public RecyclerViewPager(Context context) {
         this(context, null);
@@ -90,38 +70,6 @@ public class RecyclerViewPager extends RecyclerView {
         isInertia = a.getBoolean(R.styleable.RecyclerViewPager_rvp_inertia, false);
         mMillisecondsPerInch = a.getFloat(R.styleable.RecyclerViewPager_rvp_millisecondsPerInch, 25f);
         a.recycle();
-    }
-
-    public void setFlingFactor(float flingFactor) {
-        mFlingFactor = flingFactor;
-    }
-
-    public float getFlingFactor() {
-        return mFlingFactor;
-    }
-
-    public void setTriggerOffset(float triggerOffset) {
-        mTriggerOffset = triggerOffset;
-    }
-
-    public float getTriggerOffset() {
-        return mTriggerOffset;
-    }
-
-    public void setSinglePageFling(boolean singlePageFling) {
-        mSinglePageFling = singlePageFling;
-    }
-
-    public boolean isSinglePageFling() {
-        return mSinglePageFling;
-    }
-
-    public boolean isInertia() {
-        return isInertia;
-    }
-
-    public void setInertia(boolean inertia) {
-        isInertia = inertia;
     }
 
     @Override
@@ -166,8 +114,13 @@ public class RecyclerViewPager extends RecyclerView {
         return null;
     }
 
-    public int getPageSize() {
-        return mChildWidth;
+    public int getPageWidth() {
+        return mPageSize;
+    }
+
+    public void setPageWidth(int pageSize) {
+        mPageSize = pageSize;
+        requestLayout();
     }
 
     public RecyclerViewPagerAdapter getWrapperAdapter() {
@@ -175,136 +128,49 @@ public class RecyclerViewPager extends RecyclerView {
     }
 
     @Override
-    public void setLayoutManager(LayoutManager layout) {
-        super.setLayoutManager(layout);
-
-        if (layout instanceof LinearLayoutManager) {
-            reverseLayout = ((LinearLayoutManager) layout).getReverseLayout();
-        }
-    }
-
-    @Override
     public boolean fling(int velocityX, int velocityY) {
         boolean flinging = super.fling((int) (velocityX * mFlingFactor), (int) (velocityY * mFlingFactor));
-        if (flinging) {
-            LinearLayoutManager linearLayoutManager = (LinearLayoutManager) getLayoutManager();
 
-            //these four variables identify the views you see on screen.
-            int lastVisibleView = linearLayoutManager.findLastVisibleItemPosition();
-            int firstVisibleView = linearLayoutManager.findFirstVisibleItemPosition();
-            View firstView = linearLayoutManager.findViewByPosition(firstVisibleView);
-            View lastView = linearLayoutManager.findViewByPosition(lastVisibleView);
+        LinearLayoutManager linearLayoutManager = (LinearLayoutManager) getLayoutManager();
 
-//these variables get the distance you need to scroll in order to center your views.
-//my views have variable sizes, so I need to calculate side margins separately.
-//note the subtle difference in how right and left margins are calculated, as well as
-//the resulting scroll distances.
-            int leftMargin = (this.getWidth() - lastView.getWidth()) / 2;
-            int rightMargin = (this.getWidth() - firstView.getWidth()) / 2 + firstView.getWidth();
-            int leftEdge = lastView.getLeft();
-            int rightEdge = firstView.getRight();
-            int scrollDistanceLeft = leftEdge - leftMargin;
-            int scrollDistanceRight = rightMargin - rightEdge;
+        //these four variables identify the views you see on screen.
+        int lastVisibleView = linearLayoutManager.findLastVisibleItemPosition();
+        int firstVisibleView = linearLayoutManager.findFirstVisibleItemPosition();
+        View firstView = linearLayoutManager.findViewByPosition(firstVisibleView);
+        View lastView = linearLayoutManager.findViewByPosition(lastVisibleView);
 
-//if(user swipes to the left)
-            if(velocityX > 0) smoothScrollBy(scrollDistanceLeft, 0);
-            else smoothScrollBy(-scrollDistanceRight, 0);
+        //these variables get the distance you need to scroll in order to center your views.
+        //note the subtle difference in how right and left margins are calculated, as well as
+        //the resulting scroll distances.
+        int leftMargin = (this.getWidth() - lastView.getWidth()) / 2;
+        int rightMargin = (this.getWidth() - firstView.getWidth()) / 2 + firstView.getWidth();
+        int leftEdge = lastView.getLeft();
+        int rightEdge = firstView.getRight();
+        int scrollDistanceLeft = leftEdge - leftMargin;
+        int scrollDistanceRight = rightMargin - rightEdge;
 
-            if (mOnPageChangedListeners != null) {
-                for (OnPageChangedListener onPageChangedListener : mOnPageChangedListeners) {
-                    if (onPageChangedListener != null && velocityX > 0) {
-                        onPageChangedListener.OnPageChanged(firstVisibleView, lastVisibleView);
-                    }else if(onPageChangedListener != null && velocityX < 0){
-                        onPageChangedListener.OnPageChanged(lastVisibleView, firstVisibleView);
-                    }
-                }
-            }
-            return true;
-
-
-/*
-            if (getLayoutManager().canScrollHorizontally()) {
-                adjustPositionX(velocityX);
-            } else {
-                adjustPositionY(velocityY);
-            }
-*/
-
+        //if(user swipes from right to the left).
+        if(velocityX > 0){
+            smoothScrollBy(scrollDistanceLeft, 0);  //offset to center
+        } else {
+            smoothScrollBy(-scrollDistanceRight, 0);//offset to center
         }
 
+        //notify listener to update position
+        if (mOnPageChangedListeners != null) {
+            for (OnPageChangedListener onPageChangedListener : mOnPageChangedListeners) {
+                if (onPageChangedListener != null && velocityX > 0) {       //swipes from right to the left
+                    onPageChangedListener.OnPageChanged(firstVisibleView, lastVisibleView);
+                }else if(onPageChangedListener != null && velocityX < 0){   //swipes from left to the right
+                    onPageChangedListener.OnPageChanged(lastVisibleView, firstVisibleView);
+                }
+            }
+        }
         if (DEBUG) {
             Log.d("@", "velocityX:" + velocityX);
             Log.d("@", "velocityY:" + velocityY);
         }
         return flinging;
-    }
-
-    @Override
-    public void smoothScrollToPosition(int position) {
-        if (DEBUG) {
-            Log.d("@", "smoothScrollToPosition:" + position);
-        }
-
-        if (mPositionBeforeScroll < 0) {
-            mPositionBeforeScroll = getCurrentPosition();
-        }
-        mSmoothScrollTargetPosition = position;
-        if (getLayoutManager() != null && getLayoutManager() instanceof LinearLayoutManager) {
-            // exclude item decoration
-            LinearSmoothScroller linearSmoothScroller =
-                    new LinearSmoothScroller(getContext()) {
-                        @Override
-                        public PointF computeScrollVectorForPosition(int targetPosition) {
-                            if (getLayoutManager() == null) {
-                                return null;
-                            }
-                            return ((LinearLayoutManager) getLayoutManager())
-                                    .computeScrollVectorForPosition(targetPosition);
-                        }
-
-                        @Override
-                        protected void onTargetFound(View targetView, RecyclerView.State state, Action action) {
-                            if (getLayoutManager() == null) {
-                                return;
-                            }
-                            int dx = calculateDxToMakeVisible(targetView,
-                                    getHorizontalSnapPreference());
-                            int dy = calculateDyToMakeVisible(targetView,
-                                    getVerticalSnapPreference());
-                            if (dx > 0) {
-                                dx = dx - getLayoutManager()
-                                        .getLeftDecorationWidth(targetView);
-                            } else {
-                                dx = dx + getLayoutManager()
-                                        .getRightDecorationWidth(targetView);
-                            }
-                            if (dy > 0) {
-                                dy = dy - getLayoutManager()
-                                        .getTopDecorationHeight(targetView);
-                            } else {
-                                dy = dy + getLayoutManager()
-                                        .getBottomDecorationHeight(targetView);
-                            }
-                            final int distance = (int) Math.sqrt(dx * dx + dy * dy);
-                            final int time = calculateTimeForDeceleration(distance);
-                            if (time > 0) {
-                                action.update(-dx, -dy, time, mDecelerateInterpolator);
-                            }
-                        }
-
-                        @Override
-                        protected float calculateSpeedPerPixel(DisplayMetrics displayMetrics) {
-                            return mMillisecondsPerInch / displayMetrics.densityDpi;
-                        }
-                    };
-            linearSmoothScroller.setTargetPosition(position);
-            if (position == RecyclerView.NO_POSITION) {
-                return;
-            }
-            getLayoutManager().startSmoothScroll(linearSmoothScroller);
-        } else {
-            super.smoothScrollToPosition(position);
-        }
     }
 
     @Override
@@ -315,35 +181,13 @@ public class RecyclerViewPager extends RecyclerView {
         mPositionBeforeScroll = getCurrentPosition();
         mSmoothScrollTargetPosition = position;
         super.scrollToPosition(position);
+
+        //Offset the childItem to RecyclerView's center
+        //cause scrollToPosition(...) won't trigger fling(...) to allocate to center.
         if(position != 0 || position != mViewPagerAdapter.getItemCount() - 1){
-            int padding = (getWidth() - mChildWidth)/2;
+            int padding = (getWidth() - mPageSize)/2;
             scrollBy(-padding, 0);
         }
-        getViewTreeObserver().addOnGlobalLayoutListener(new ViewTreeObserver.OnGlobalLayoutListener() {
-            @SuppressWarnings("deprecation")
-            @Override
-            public void onGlobalLayout() {
-                if (Build.VERSION.SDK_INT < 16) {
-                    getViewTreeObserver().removeGlobalOnLayoutListener(this);
-                } else {
-                    getViewTreeObserver().removeOnGlobalLayoutListener(this);
-                }
-
-                if (mSmoothScrollTargetPosition >= 0 && mSmoothScrollTargetPosition < getItemCount()) {
-                    if (mOnPageChangedListeners != null) {
-                        for (OnPageChangedListener onPageChangedListener : mOnPageChangedListeners) {
-                            if (onPageChangedListener != null) {
-                                onPageChangedListener.OnPageChanged(mPositionBeforeScroll, getCurrentPosition());
-                            }
-                        }
-                    }
-                }
-            }
-        });
-    }
-
-    private int getItemCount() {
-        return mViewPagerAdapter == null ? 0 : mViewPagerAdapter.getItemCount();
     }
 
     /**
@@ -360,59 +204,6 @@ public class RecyclerViewPager extends RecyclerView {
             curPosition = mSmoothScrollTargetPosition;
         }
         return curPosition;
-    }
-
-    /***
-     * adjust position before Touch event complete and fling action start.
-     */
-    protected void adjustPositionX(int velocityX) {
-        if (reverseLayout) velocityX *= -1;
-
-        int childCount = getChildCount();
-        if (childCount > 0) {
-            int curPosition = ViewUtils.getCenterXChildPosition(this);
-            int childWidth = getPageSize();
-            int flingCount = getFlingCount(velocityX, childWidth);
-            int targetPosition = curPosition + flingCount;
-            if (mSinglePageFling) {
-                flingCount = Math.max(-1, Math.min(1, flingCount));
-                targetPosition = flingCount == 0 ? curPosition : mPositionOnTouchDown + flingCount;
-                if (DEBUG) {
-                    Log.d("@", "flingCount:" + flingCount);
-                    Log.d("@", "original targetPosition:" + targetPosition);
-                }
-            }
-            targetPosition = Math.max(targetPosition, 0);
-            targetPosition = Math.min(targetPosition, getItemCount() - 1);
-            if (targetPosition == curPosition
-                    && (!mSinglePageFling || mPositionOnTouchDown == curPosition)) {
-                View centerXChild = ViewUtils.getCenterXChild(this);
-                if (centerXChild != null) {
-                    if (mTouchSpan > centerXChild.getWidth() * mTriggerOffset * mTriggerOffset && targetPosition != 0) {
-                        if (!reverseLayout) targetPosition--;
-                        else targetPosition++;
-                    } else if (mTouchSpan < centerXChild.getWidth() * -mTriggerOffset && targetPosition != getItemCount() - 1) {
-                        if (!reverseLayout) targetPosition++;
-                        else targetPosition--;
-                    }
-                }
-            }
-            if (DEBUG) {
-                Log.d("@", "mTouchSpan:" + mTouchSpan);
-                Log.d("@", "adjustPositionX:" + targetPosition);
-            }
-//            smoothScrollToPosition(safeTargetPosition(targetPosition, getItemCount()));
-            //padding
-            int totalWidth = this.getWidth();
-            int viewWidth = getPageSize();
-            int padding = (totalWidth - viewWidth) / 2;
-
-            if(mTouchSpan < 0) {    //from left to right
-                smoothScrollBy(childWidth + (int)mTouchSpan, 0);
-            }else{  //from right to left
-                smoothScrollBy( (int)mTouchSpan - childWidth, 0);
-            }
-        }
     }
 
     public void addOnPageChangedListener(OnPageChangedListener listener) {
@@ -432,32 +223,8 @@ public class RecyclerViewPager extends RecyclerView {
 
     }
 
-    private int getFlingCount(int velocity, int cellSize) {
-        if (velocity == 0) {
-            return 0;
-        }
-        int sign = velocity > 0 ? 1 : -1;
-        return (int) (sign * Math.ceil((velocity * sign * mFlingFactor / cellSize)
-                - mTriggerOffset));
-    }
-
-    private int safeTargetPosition(int position, int count) {
-        if (position < 0) {
-            return 0;
-        }
-        if (position >= count) {
-            return count - 1;
-        }
-        return position;
-    }
-
     public interface OnPageChangedListener {
         void OnPageChanged(int oldPosition, int newPosition);
-    }
-
-
-    public float getlLastY() {
-        return mLastY;
     }
 
     class FixLinearSnapHelper extends LinearSnapHelper {
