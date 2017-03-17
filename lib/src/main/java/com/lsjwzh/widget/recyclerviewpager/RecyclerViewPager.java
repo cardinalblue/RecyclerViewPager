@@ -187,9 +187,15 @@ public class RecyclerViewPager extends RecyclerView {
 
         //Offset the childItem to RecyclerView's center
         //cause scrollToPosition(...) won't trigger fling(...) to allocate to center.
-        if(position != 0 || position != mViewPagerAdapter.getItemCount() - 1){
+        if(position > 0 || position <= mViewPagerAdapter.getItemCount() - 1){
             int padding = (getWidth() - mPageSize)/2;
-            scrollBy(-padding, 0);
+            int sign;
+            if(position != mViewPagerAdapter.getItemCount() - 1){
+                sign = -1;
+            }else {
+                sign = 1;
+            }
+            scrollBy(sign * padding, 0);
         }
     }
 
