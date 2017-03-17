@@ -139,37 +139,40 @@ public class RecyclerViewPager extends RecyclerView {
         View firstView = linearLayoutManager.findViewByPosition(firstVisibleView);
         View lastView = linearLayoutManager.findViewByPosition(lastVisibleView);
 
-        //these variables get the distance you need to scroll in order to center your views.
-        //note the subtle difference in how right and left margins are calculated, as well as
-        //the resulting scroll distances.
-        int leftMargin = (this.getWidth() - lastView.getWidth()) / 2;
-        int rightMargin = (this.getWidth() - firstView.getWidth()) / 2 + firstView.getWidth();
-        int leftEdge = lastView.getLeft();
-        int rightEdge = firstView.getRight();
-        int scrollDistanceLeft = leftEdge - leftMargin;
-        int scrollDistanceRight = rightMargin - rightEdge;
+        if(firstView != null && lastView != null) {
+            //these variables get the distance you need to scroll in order to center your views.
+            //note the subtle difference in how right and left margins are calculated, as well as
+            //the resulting scroll distances.
+            int leftMargin = (this.getWidth() - lastView.getWidth()) / 2;
+            int rightMargin = (this.getWidth() - firstView.getWidth()) / 2 + firstView.getWidth();
+            int leftEdge = lastView.getLeft();
+            int rightEdge = firstView.getRight();
+            int scrollDistanceLeft = leftEdge - leftMargin;
+            int scrollDistanceRight = rightMargin - rightEdge;
 
-        //if(user swipes from right to the left).
-        if(velocityX > 0){
-            smoothScrollBy(scrollDistanceLeft, 0);  //offset to center
-        } else {
-            smoothScrollBy(-scrollDistanceRight, 0);//offset to center
-        }
+            //if(user swipes from right to the left).
+            if (velocityX > 0) {
+                smoothScrollBy(scrollDistanceLeft, 0);  //offset to center
+            } else {
+                smoothScrollBy(-scrollDistanceRight, 0);//offset to center
+            }
 
-        //notify listener to update position
-        if (mOnPageChangedListeners != null) {
-            for (OnPageChangedListener onPageChangedListener : mOnPageChangedListeners) {
-                if (onPageChangedListener != null && velocityX > 0) {       //swipes from right to the left
-                    onPageChangedListener.OnPageChanged(firstVisibleView, lastVisibleView);
-                }else if(onPageChangedListener != null && velocityX < 0){   //swipes from left to the right
-                    onPageChangedListener.OnPageChanged(lastVisibleView, firstVisibleView);
+            //notify listener to update position
+            if (mOnPageChangedListeners != null) {
+                for (OnPageChangedListener onPageChangedListener : mOnPageChangedListeners) {
+                    if (onPageChangedListener != null && velocityX > 0) {       //swipes from right to the left
+                        onPageChangedListener.OnPageChanged(firstVisibleView, lastVisibleView);
+                    } else if (onPageChangedListener != null && velocityX < 0) {   //swipes from left to the right
+                        onPageChangedListener.OnPageChanged(lastVisibleView, firstVisibleView);
+                    }
                 }
             }
+            if (DEBUG) {
+                Log.d("@", "velocityX:" + velocityX);
+                Log.d("@", "velocityY:" + velocityY);
+            }
         }
-        if (DEBUG) {
-            Log.d("@", "velocityX:" + velocityX);
-            Log.d("@", "velocityY:" + velocityY);
-        }
+
         return flinging;
     }
 
